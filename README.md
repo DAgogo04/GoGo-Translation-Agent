@@ -13,7 +13,7 @@
 ![PRs](https://img.shields.io/badge/PRs-welcome-12b5a5)
 [![Built with Reflection](https://img.shields.io/badge/built%20with-reflection-7c6cff)](#-agentic-reflection)
 
-English | 简体中文
+[English](#) | [简体中文](#-简体中文)
 
 </div>
 
@@ -28,11 +28,11 @@ English | 简体中文
 - [Agentic Reflection](#-agentic-reflection)
 - [Terminology Governance](#-terminology-governance)
 - [Tech Stack](#-tech-stack)
-- [Quick Start](#-quick-start)
+- [Reference Demo](#-reference-demo)
 - [Call It As An API](#-call-it-as-an-api)
 - [Evaluation](#-evaluation)
 - [FAQ](#-faq)
-- [Acknowledgments](#-acknowledgments)
+- [Repository Status](#-repository-status)
 - [License](#-license)
 
 ---
@@ -49,6 +49,18 @@ The end-to-end cycle can take **about a week**; the model layer alone starts aro
 
 > **Result (internal pilot):** end-to-end delivery **~1 week → ~1 day**; model-layer accuracy **70% → 96%** on the offline annotated set.
 > *(口径：准确率为离线标注评测集上术语/语义正确率；具体数字以实测为准。)*
+
+---
+
+> ### 📦 Repository Status（先读我）
+>
+> 本仓库是该项目的**设计与技术文档 + 一个可独立运行的参考实现**。
+>
+> - **生产系统运行在公司内部基础设施上**：钉钉机器人、内部模型网关、TMS 多语言系统与内部模型均为公司专有资产，**无法公开**，因此仓库**不含**可直接对接生产的完整工程代码。
+> - **[`reference/`](#-reference-demo) 提供一个简化但可运行的参考实现**，演示核心的 `translate → reflect → improve` 反思循环；只需一个 OpenAI 兼容的 API key 即可运行。
+> - 因此本仓库**不能 `clone` 后直接接入生产环境**；但参考实现可直接运行，整套架构可据此复现。
+>
+> 参考实现仅用于说明思路，**不是**完整生产系统：它使用单一模型，没有状态机、术语库治理、多模型网关、格式保护、钉钉入口与 TMS 写回。
 
 ---
 
@@ -217,21 +229,32 @@ Human post-edits become term rules and few-shot examples automatically; exceptio
 
 ---
 
-## 🚀 Quick Start
+## 🧪 Reference Demo（可运行的参考实现）
+
+`reference/translation_reflection.py` is a self-contained single-file demo of the core **Translate → Reflect → Improve** loop used by the production system.
 
 ```bash
 # 1. Clone
 git clone https://github.com/DAgogo04/GoGo-Translation-Agent.git
 cd GoGo-Translation-Agent
 
-# 2. Configure your model gateway key
-export MODEL_API_KEY=sk-...
+# 2. Install
+pip install -r reference/requirements.txt
 
-# 3. Run an intake + translation task
-python -m gogo_agent --intent add_term --source "Welcome to {app_name}" --to zh
+# 3. Point at any OpenAI-compatible endpoint
+export OPENAI_API_KEY="sk-..."
+export OPENAI_BASE_URL="https://api.openai.com/v1"   # optional: your gateway
+export GOGO_MODEL="gpt-4o-mini"                     # optional
+
+# 4. Run
+python reference/translation_reflection.py
 ```
 
-Talking to it in your office tool:
+It prints the first draft, the reflection's findings, and the improved final translation.
+
+> ⚠️ This demo uses a **single model** and only shows the reflection loop. It does **not** include the state machine, managed glossary, format protection, multi-model gateway, DingTalk entry, or TMS write-back — those run on proprietary infrastructure and are documented in [Architecture](#-architecture).
+
+Talking to the production agent in your office tool:
 > **你：** 我要新增一个词条 "Welcome to {app_name}"
 > **Agent：** 识别意图 → 归一化 → 生成 key 并查重 → 翻译并评分 → 写回 TMS → 回执
 
@@ -292,10 +315,9 @@ We report cycle time **together with** first-pass rate and rework rate. Faster o
 
 ---
 
-## 🙏 Acknowledgments
+## 📦 Repository Status
 
-- The reflection workflow draws on Andrew Ng's **translation-agent** and the agentic translation ideas behind it.
-- The production-grade, format-protection framing takes inspiration from projects like **jta** (JSON Translation Agent).
+Production code is proprietary and runs on internal company infrastructure (DingTalk, internal model gateway, TMS, and internal models). This repository ships the design/architecture document above plus the runnable [Reference Demo](#-reference-demo); it cannot be cloned and connected to production directly.
 
 ---
 
