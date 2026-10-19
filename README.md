@@ -131,6 +131,8 @@ The state machine defines legal transitions; the **model cannot skip stages**. L
 
 ## 🏗️ Architecture
 
+The LLM is a **stateless, probabilistic brain**; the **harness** is everything built around it — the runtime loop, tools, context, memory, knowledge, guardrails and observability — that turns it into a reliable agent. Inside the harness the runtime is a **Graph (deterministic state machine)**: the model supplies intelligence, while the state machine decides which stage runs next and prevents skipping.
+
 ```mermaid
 flowchart TB
   subgraph Input["📥 Entry layer"]
@@ -154,6 +156,10 @@ flowchart TB
     Mem["Memory · SQLite"]
   end
 
+  subgraph Obs["🔍 Observability & eval"]
+    Langfuse["Langfuse · Trace / Eval / Prompt"]
+  end
+
   subgraph Output["📤 Output"]
     TMS["Multilingual system (TMS)"]
     API["Structured API for frontend / tooling"]
@@ -167,6 +173,9 @@ flowchart TB
   Executor --> Gateway
   Executor --> Mem
   TMS --> API
+  Router -. trace .-> Langfuse
+  Executor -. trace .-> Langfuse
+  Checker -. eval .-> Langfuse
 ```
 
 ### Layer responsibilities
@@ -179,6 +188,10 @@ flowchart TB
 | **Terminology** | Term base, exceptions, special rules, conflict priority, write-back |
 | **Gateway** | Multi-model routing, rate limiting, retry, fallback, trace logging |
 | **Output** | Write back to TMS; expose a structured API |
+
+> **Honesty note — real vs planned.**
+> **Implemented (real):** office/Jira/Confluence/OCR entry, intent router, cross-validation, translate→reflect→improve, 4-dim scoring, format protection, term/style retrieval, normalization/key/dedup, write-back to TMS, COMET/BLEU/MQM offline evaluation.
+> **Planned / to be added (the complete industry form):** a dedicated Langfuse trace/eval layer, explicit hybrid retrieval + rerank, instruction templates and long-term memory. These are marked as roadmap rather than shipped.
 
 ---
 
@@ -226,6 +239,8 @@ Human post-edits become term rules and few-shot examples automatically; exceptio
 | **Storage** | SQLite (tasks, terms, memory) |
 | **Gateway** | Auth, rate limiting, retry, fallback/failover, full-trace logging |
 | **Quality** | Offline eval set, regression, human-in-the-loop |
+| **Evaluation** | COMET, BLEU / chrF / TER, MQM / DQF (offline labeled set), human sampling |
+| **Observability** *(planned)* | Langfuse — full-trace spans, online/offline eval, prompt management |
 
 ---
 
