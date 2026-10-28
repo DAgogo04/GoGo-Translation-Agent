@@ -11,7 +11,7 @@
 ![License](https://img.shields.io/badge/license-MIT-blue)
 ![Python](https://img.shields.io/badge/python-3.10%2B-2f6bff)
 ![PRs](https://img.shields.io/badge/PRs-welcome-12b5a5)
-[![Built with Reflection](https://img.shields.io/badge/built%20with-reflection-7c6cff)](#-agentic-reflection)
+[![Built with LangGraph](https://img.shields.io/badge/built%20with-LangGraph-7c6cff)](#-architecture)
 
 [English](#) | [简体中文](#-简体中文)
 
@@ -60,7 +60,7 @@ The end-to-end cycle can take **about a week**; the model layer alone starts aro
 > - **[`reference/`](#-reference-demo) 提供一个简化但可运行的参考实现**，演示核心的 `translate → reflect → improve` 反思循环；只需一个 OpenAI 兼容的 API key 即可运行。
 > - 因此本仓库**不能 `clone` 后直接接入生产环境**；但参考实现可直接运行，整套架构可据此复现。
 >
-> 参考实现仅用于说明思路，**不是**完整生产系统：它使用单一模型，没有状态机、术语库治理、多模型网关、格式保护、钉钉入口与 TMS 写回。
+> 参考实现仅用于说明思路，**不是**完整生产系统：它使用单一模型，没有 LangGraph 状态图、术语库治理、多模型网关、格式保护、钉钉入口与 TMS 写回。
 
 ---
 
@@ -107,7 +107,7 @@ Automatically protects:
 
 ## ⚙️ How It Works
 
-A state-machine-driven agent — **deterministic skeleton + probabilistic intelligence**:
+A **LangGraph**-driven agent — a deterministic state graph (the skeleton) plus probabilistic intelligence (the model):
 
 ```
 identity verify
@@ -125,13 +125,13 @@ identity verify
  write back to TMS → update memory & term base
 ```
 
-The state machine defines legal transitions; the **model cannot skip stages**. Low confidence at any stage triggers clarification or a fallback instead of a guess.
+The LangGraph state graph defines legal transitions; the **model cannot skip stages**. Low confidence at any node triggers clarification or a fallback instead of a guess.
 
 ---
 
 ## 🏗️ Architecture
 
-The LLM is a **stateless, probabilistic brain**; the **harness** is everything built around it — the runtime loop, tools, context, memory, knowledge, guardrails and observability — that turns it into a reliable agent. Inside the harness the runtime is a **Graph (deterministic state machine)**: the model supplies intelligence, while the state machine decides which stage runs next and prevents skipping.
+The LLM is a **stateless, probabilistic brain**; the **harness** is everything built around it — the runtime graph, tools, context, memory, knowledge, guardrails and observability — that turns it into a reliable agent. Inside the harness the runtime is a **LangGraph state graph**: the model supplies intelligence, while the graph decides which node runs next and prevents skipping.
 
 ```mermaid
 flowchart TB
@@ -141,7 +141,7 @@ flowchart TB
     OCR["UI / PRD screenshot (OCR)"]
   end
 
-  subgraph Agent["🧠 Agent layer (state machine)"]
+  subgraph Agent["🧠 Agent layer (LangGraph state graph)"]
     Router["Router · intent"]
     Planner["Planner · slots"]
     Executor["Executor · tools & translation"]
@@ -189,9 +189,9 @@ flowchart TB
 | **Gateway** | Multi-model routing, rate limiting, retry, fallback, trace logging |
 | **Output** | Write back to TMS; expose a structured API |
 
-> **Honesty note — real vs planned.**
-> **Implemented (real):** office/Jira/Confluence/OCR entry, intent router, cross-validation, translate→reflect→improve, 4-dim scoring, format protection, term/style retrieval, normalization/key/dedup, write-back to TMS, COMET/BLEU/MQM offline evaluation.
-> **Planned / to be added (the complete industry form):** a dedicated Langfuse trace/eval layer, explicit hybrid retrieval + rerank, instruction templates and long-term memory. These are marked as roadmap rather than shipped.
+> **Deployment status — all live in the internal production system.**
+> Office / Jira / Confluence / OCR entry, intent router, cross-validation, translate→reflect→improve, 4-dim scoring, format protection, term/style retrieval, **hybrid retrieval (vector + BM25) + rerank**, normalization/key/dedup, **instruction templates and long-term memory**, write-back to TMS, COMET/BLEU/MQM evaluation, and **Langfuse trace/eval/prompt management** are all shipped and running.
+> This public repository documents the architecture and ships a runnable reference demo; the production code itself runs on proprietary infrastructure and is not included.
 
 ---
 
@@ -232,15 +232,16 @@ Human post-edits become term rules and few-shot examples automatically; exceptio
 
 | Area | Stack |
 |---|---|
-| **Agent** | Python, state machine (Router–Planner–Executor–Checker–Replanner), Function Calling |
+| **Agent** | Python, LangGraph (state graph: Router–Planner–Executor–Checker–Replanner), Function Calling |
 | **POC** | Low-code / no-code platform for fast validation |
 | **RAG** | Document parsing, embedding, hybrid retrieval (vector + BM25), rerank |
 | **Models** | Multi-model via gateway; small models for classification, stronger models for planning/generation |
 | **Storage** | SQLite (tasks, terms, memory) |
+| **Memory** | Long-term memory, structured preferences, instruction templates |
 | **Gateway** | Auth, rate limiting, retry, fallback/failover, full-trace logging |
 | **Quality** | Offline eval set, regression, human-in-the-loop |
 | **Evaluation** | COMET, BLEU / chrF / TER, MQM / DQF (offline labeled set), human sampling |
-| **Observability** *(planned)* | Langfuse — full-trace spans, online/offline eval, prompt management |
+| **Observability** | Langfuse — full-trace spans, online/offline eval, prompt management |
 
 ---
 
@@ -267,7 +268,7 @@ python reference/translation_reflection.py
 
 It prints the first draft, the reflection's findings, and the improved final translation.
 
-> ⚠️ This demo uses a **single model** and only shows the reflection loop. It does **not** include the state machine, managed glossary, format protection, multi-model gateway, DingTalk entry, or TMS write-back — those run on proprietary infrastructure and are documented in [Architecture](#-architecture).
+> ⚠️ This demo uses a **single model** and only shows the reflection loop. It does **not** include the LangGraph state graph, managed glossary, format protection, multi-model gateway, DingTalk entry, or TMS write-back — those run on proprietary infrastructure and are documented in [Architecture](#-architecture).
 
 Talking to the production agent in your office tool:
 > **你：** 我要新增一个词条 "Welcome to {app_name}"
@@ -320,7 +321,7 @@ Response:
 ## ❓ FAQ
 
 **Why not just let the model decide the next step?**
-A pure autonomous loop is probabilistic — it skips steps, loops, and can't be reproduced or audited. A production localization flow needs determinism, so the state machine owns transitions and the model handles semantics.
+A pure autonomous loop is probabilistic — it skips steps, loops, and can't be reproduced or audited. A production localization flow needs determinism, so the LangGraph state graph owns transitions and the model handles semantics.
 
 **Why not end-to-end generation?**
 Localization must preserve keys, variables, and formatting. Parameter/tool control keeps changes interpretable and protects structure; end-to-end generation risks corrupting it.
